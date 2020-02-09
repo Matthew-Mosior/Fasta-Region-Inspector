@@ -567,23 +567,26 @@ variantsWithinAmbiguityCodesAndTSS (x:xs) ys = [variantsWithinAmbiguityCodesAndT
       --call variantsAmbiguityCodesCheckerSmaller.
       variantsAmbiguityCodesCheckerSmall :: ([String],[String],Char) -> [[String]] -> [[String]]
       variantsAmbiguityCodesCheckerSmall _  []     = []
-      variantsAmbiguityCodesCheckerSmall xs (y:ys) = [[y DL.!! 0] ++ [y DL.!! 1] ++ (variantsAmbiguityCodesCheckerSmaller xs (DL.take ((DL.length y) - 6) (DL.drop 6 y)) (DL.length (y DL.!! 1)))] ++ (variantsAmbiguityCodesCheckerSmall xs ys)
+      variantsAmbiguityCodesCheckerSmall xs (y:ys) = if not (DL.null (variantsAmbiguityCodesCheckerSmaller xs (DL.take ((DL.length y) - 6) (DL.drop 6 y)) (DL.length (y DL.!! 1))))
+                                                         then [[y DL.!! 0]] ++ [[y DL.!! 1]] ++ (variantsAmbiguityCodesCheckerSmaller xs (DL.take ((DL.length y) - 6) (DL.drop 6 y)) (DL.length (y DL.!! 1)))
+                                                           ++ (variantsAmbiguityCodesCheckerSmall xs ys)
+                                                         else variantsAmbiguityCodesCheckerSmall xs ys
       --variantsAmbiguityCodesCheckerSmaller -> This function will
       --check whether the variant in question lies within an
       --ambiguity code sequence.
-      variantsAmbiguityCodesCheckerSmaller :: ([String],[String],Char) -> [String] -> Int -> [String]
+      variantsAmbiguityCodesCheckerSmaller :: ([String],[String],Char) -> [String] -> Int -> [[String]]
       variantsAmbiguityCodesCheckerSmaller _  []     _ = []
       variantsAmbiguityCodesCheckerSmaller xs (y:ys) z = --TSS reads in reverse direction (-1).
                                                          if (((\(_,b,_) -> b) xs) DL.!! 2) == "-1"
                                                              then if (read y :: Int) >= (read (((\(a,_,_) -> a) xs) DL.!! 3) :: Int) &&
                                                                      (read (((\(a,_,_) -> a) xs) DL.!! 3) :: Int) >= ((((read y) - z) + 1) :: Int)
-                                                                 then [(DL.intercalate ":" ((\(a,_,_) -> a) xs)) ++ (DL.intercalate ":" ((\(_,b,_) -> b) xs)) ++ [((\(_,_,c) -> c) xs)] ++ y]
+                                                                 then [[DL.intercalate ":" ((\(a,_,_) -> a) xs)] ++ [DL.intercalate ":" ((\(_,b,_) -> b) xs)] ++ [[((\(_,_,c) -> c) xs)]] ++ [y]]
                                                                    ++ (variantsAmbiguityCodesCheckerSmaller xs ys z)
                                                                  else variantsAmbiguityCodesCheckerSmaller xs ys z
                                                          --TSS reads in forward direction (1).
                                                          else if (read y :: Int) <= (read (((\(a,_,_) -> a) xs) DL.!! 3) :: Int) &&
                                                                  (read (((\(a,_,_) -> a) xs) DL.!! 3) :: Int) <= ((((read y) + z) - 1) :: Int) 
-                                                             then [(DL.intercalate ":" ((\(a,_,_) -> a) xs)) ++ (DL.intercalate ":" ((\(_,b,_) -> b) xs)) ++ [((\(_,_,c) -> c) xs)] ++ y]
+                                                             then [[DL.intercalate ":" ((\(a,_,_) -> a) xs)] ++ [DL.intercalate ":" ((\(_,b,_) -> b) xs)] ++ [[((\(_,_,c) -> c) xs)]] ++ [y]]
                                                                ++ (variantsAmbiguityCodesCheckerSmaller xs ys z)
                                                              else variantsAmbiguityCodesCheckerSmaller xs ys z
               ---------------------- 
