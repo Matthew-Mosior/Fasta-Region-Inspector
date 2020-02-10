@@ -568,12 +568,12 @@ variantsWithinAmbiguityCodesAndTSS (x:xs) ys = (variantsWithinAmbiguityCodesAndT
       variantsAmbiguityCodesCheckerSmall :: ([String],[String],Char) -> [[String]] -> [[String]]
       variantsAmbiguityCodesCheckerSmall _  []     = []
       variantsAmbiguityCodesCheckerSmall xs (y:ys) = if not (DL.null (variantsAmbiguityCodesCheckerSmaller xs (DL.take ((DL.length y) - 6) (DL.drop 6 y)) (DL.length (y DL.!! 1))))
-                                                         then [[y DL.!! 0] 
-                                                            ++ [y DL.!! 1] 
-                                                            ++ [DL.intercalate "," (variantsAmbiguityCodesCheckerSmaller xs (DL.take ((DL.length y) - 6) (DL.drop 6 y)) (DL.length (y DL.!! 1)))] 
-                                                            ++ [DL.intercalate ":" ((\(a,_,_) -> a) xs)] 
+                                                         then [[DL.intercalate ":" ((\(a,_,_) -> a) xs)] 
                                                             ++ [DL.intercalate ":" ((\(_,b,_) -> b) xs)] 
-                                                            ++ [[((\(_,_,c) -> c) xs)]]] 
+                                                            ++ [[((\(_,_,c) -> c) xs)]]
+                                                            ++ [y DL.!! 0]
+                                                            ++ [y DL.!! 1]
+                                                            ++ [DL.intercalate "," (variantsAmbiguityCodesCheckerSmaller xs (DL.take ((DL.length y) - 6) (DL.drop 6 y)) (DL.length (y DL.!! 1)))]]
                                                            ++ (variantsAmbiguityCodesCheckerSmall xs ys)
                                                          else variantsAmbiguityCodesCheckerSmall xs ys
       --variantsAmbiguityCodesCheckerSmaller -> This function will
@@ -682,7 +682,7 @@ processArgsAndFiles (options,files) = do
     --Prepare final print ready files with headers.
     let finalprintreadywithintss = [["Variant","Region","Variant_Within_Region"]] ++ printreadywithintss
     let finalprintreadyambiguitycodeswithintss = [["Ambiguity_Code","Mapped_Nucleotide_String","Chromosome","TSS","Strand","SYMBOL","Ambiguity_Code_String_Locations_Within_TSS"]] ++ printreadyambiguitycodeswithintss
-    let finalprintreadyvariantsinambiguitycodesandtss = [["Ambiguity_Code","Mapped_Nucleotide_String","Ambiguity_Code_String_Locations_Within_TSS","Variant","Region","Variant_Within_Region"]] ++ printreadyvariantsinambiguitycodesandtss
+    let finalprintreadyvariantsinambiguitycodesandtss = [["Variant","Region","Variant_Within_Region","Ambiguity_Code","Mapped_Nucleotide_String","Ambiguity_Code_String_Locations_Within_TSS"]] ++ printreadyvariantsinambiguitycodesandtss
     --Print  withintss, ambiguitycodeswithintss, and variantsinambiguitycodesandtss to files. 
     finalprintreadywithintss `CD.deepseq` printFile options "variants.tsv" finalprintreadywithintss
     finalprintreadyambiguitycodeswithintss `CD.deepseq` printFile options "ambiguity_codes.tsv" finalprintreadyambiguitycodeswithintss
