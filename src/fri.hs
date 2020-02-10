@@ -562,13 +562,13 @@ variantsWithinAmbiguityCodesAndTSS (x:xs) ys = [variantsWithinAmbiguityCodesAndT
       --call variantsAmbiguityCodesCheckerSmall.
       variantsAmbiguityCodesChecker :: ([String],[String],Char) -> [[[String]]] -> [[String]]
       variantsAmbiguityCodesChecker _      []     = []
-      variantsAmbiguityCodesChecker xs     (y:ys) = [variantsAmbiguityCodesCheckerSmall xs y] ++ (variantsAmbiguityCodesChecker xs ys)
+      variantsAmbiguityCodesChecker xs     (y:ys) = (variantsAmbiguityCodesCheckerSmall xs y) ++ (variantsAmbiguityCodesChecker xs ys)
       --variantsAmbiguityCodesCheckerSmall -> This function will
       --call variantsAmbiguityCodesCheckerSmaller.
-      variantsAmbiguityCodesCheckerSmall :: ([String],[String],Char) -> [[String]] -> [String]
+      variantsAmbiguityCodesCheckerSmall :: ([String],[String],Char) -> [[String]] -> [[String]]
       variantsAmbiguityCodesCheckerSmall _  []     = []
       variantsAmbiguityCodesCheckerSmall xs (y:ys) = if not (DL.null (variantsAmbiguityCodesCheckerSmaller xs (DL.take ((DL.length y) - 6) (DL.drop 6 y)) (DL.length (y DL.!! 1))))
-                                                         then [y DL.!! 0] ++ [y DL.!! 1] ++ (variantsAmbiguityCodesCheckerSmaller xs (DL.take ((DL.length y) - 6) (DL.drop 6 y)) (DL.length (y DL.!! 1)))
+                                                         then [[y DL.!! 0]] ++ [[y DL.!! 1]] ++ DL.map (\a -> [a]) (variantsAmbiguityCodesCheckerSmaller xs (DL.take ((DL.length y) - 6) (DL.drop 6 y)) (DL.length (y DL.!! 1)))
                                                            ++ (variantsAmbiguityCodesCheckerSmall xs ys)
                                                          else variantsAmbiguityCodesCheckerSmall xs ys
       --variantsAmbiguityCodesCheckerSmaller -> This function will
