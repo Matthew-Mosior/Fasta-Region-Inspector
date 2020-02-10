@@ -538,11 +538,11 @@ prepareAmbiguityCodesWithinTSS (x:xs) = (convertToList x) ++ (prepareAmbiguityCo
 --variantsWithinAmbiguityCodesAndTSS ->  This function will
 --identify all variants that are within ambiguity codes
 --and corresponding genes TSS.
-variantsWithinAmbiguityCodesAndTSS :: [[([String],[String],Char)]] -> [[[String]]] -> [[[String]]]
+variantsWithinAmbiguityCodesAndTSS :: [[([String],[String],Char)]] -> [[[String]]] -> [[String]]
 variantsWithinAmbiguityCodesAndTSS []     [] = []
 variantsWithinAmbiguityCodesAndTSS _      [] = []
 variantsWithinAmbiguityCodesAndTSS []     _  = []
-variantsWithinAmbiguityCodesAndTSS (x:xs) ys = [variantsWithinAmbiguityCodesAndTSSSmall variantsfiltered ys] ++ (variantsWithinAmbiguityCodesAndTSS xs ys)
+variantsWithinAmbiguityCodesAndTSS (x:xs) ys = (variantsWithinAmbiguityCodesAndTSSSmall variantsfiltered ys) ++ (variantsWithinAmbiguityCodesAndTSS xs ys)
     where 
       --Local definitions.--
       --variantsfiltered -> List containing only variants within TSS
@@ -568,26 +568,29 @@ variantsWithinAmbiguityCodesAndTSS (x:xs) ys = [variantsWithinAmbiguityCodesAndT
       variantsAmbiguityCodesCheckerSmall :: ([String],[String],Char) -> [[String]] -> [[String]]
       variantsAmbiguityCodesCheckerSmall _  []     = []
       variantsAmbiguityCodesCheckerSmall xs (y:ys) = if not (DL.null (variantsAmbiguityCodesCheckerSmaller xs (DL.take ((DL.length y) - 6) (DL.drop 6 y)) (DL.length (y DL.!! 1))))
-                                                         then [[y DL.!! 0]] ++ [[y DL.!! 1]] ++ (variantsAmbiguityCodesCheckerSmaller xs (DL.take ((DL.length y) - 6) (DL.drop 6 y)) (DL.length (y DL.!! 1)))
+                                                         then [[y DL.!! 0] 
+                                                            ++ [y DL.!! 1] 
+                                                            ++ [DL.intercalate "," (variantsAmbiguityCodesCheckerSmaller xs (DL.take ((DL.length y) - 6) (DL.drop 6 y)) (DL.length (y DL.!! 1)))] 
+                                                            ++ [DL.intercalate ":" ((\(a,_,_) -> a) xs)] 
+                                                            ++ [DL.intercalate ":" ((\(_,b,_) -> b) xs)] 
+                                                            ++ [[((\(_,_,c) -> c) xs)]]] 
                                                            ++ (variantsAmbiguityCodesCheckerSmall xs ys)
                                                          else variantsAmbiguityCodesCheckerSmall xs ys
       --variantsAmbiguityCodesCheckerSmaller -> This function will
       --check whether the variant in question lies within an
       --ambiguity code sequence.
-      variantsAmbiguityCodesCheckerSmaller :: ([String],[String],Char) -> [String] -> Int -> [[String]]
+      variantsAmbiguityCodesCheckerSmaller :: ([String],[String],Char) -> [String] -> Int -> [String]
       variantsAmbiguityCodesCheckerSmaller _  []     _ = []
       variantsAmbiguityCodesCheckerSmaller xs (y:ys) z = --TSS reads in reverse direction (-1).
                                                          if (((\(_,b,_) -> b) xs) DL.!! 2) == "-1"
                                                              then if (read y :: Int) >= (read (((\(a,_,_) -> a) xs) DL.!! 3) :: Int) &&
                                                                      (read (((\(a,_,_) -> a) xs) DL.!! 3) :: Int) >= ((((read y) - z) + 1) :: Int)
-                                                                 then [[DL.intercalate ":" ((\(a,_,_) -> a) xs)]] ++ [[DL.intercalate ":" ((\(_,b,_) -> b) xs)]] ++ [[[((\(_,_,c) -> c) xs)]]] ++ [[y]]
-                                                                   ++ (variantsAmbiguityCodesCheckerSmaller xs ys z)
+                                                                 then [y] ++ (variantsAmbiguityCodesCheckerSmaller xs ys z)
                                                                  else variantsAmbiguityCodesCheckerSmaller xs ys z
                                                          --TSS reads in forward direction (1).
                                                          else if (read y :: Int) <= (read (((\(a,_,_) -> a) xs) DL.!! 3) :: Int) &&
                                                                  (read (((\(a,_,_) -> a) xs) DL.!! 3) :: Int) <= ((((read y) + z) - 1) :: Int) 
-                                                             then [[DL.intercalate ":" ((\(a,_,_) -> a) xs)]] ++ [[DL.intercalate ":" ((\(_,b,_) -> b) xs)]] ++ [[[((\(_,_,c) -> c) xs)]]] ++ [[y]]
-                                                               ++ (variantsAmbiguityCodesCheckerSmaller xs ys z)
+                                                             then [y] ++ (variantsAmbiguityCodesCheckerSmaller xs ys z)
                                                              else variantsAmbiguityCodesCheckerSmaller xs ys z
               ---------------------- 
       ----------------------
@@ -675,11 +678,11 @@ processArgsAndFiles (options,files) = do
     --Prepare withintss, ambiguitycodeswithintss, and variantsinambiguitycodesandtss for printing. 
     let printreadywithintss = prepareWithinTSS withintss
     let printreadyambiguitycodeswithintss = ambiguitycodeswithintss `CD.deepseq` DL.concat (DL.map (DL.map (\xs -> (DL.take 6 xs) ++ [DL.intercalate "," (DL.drop 6 xs)])) (prepareAmbiguityCodesWithinTSS ambiguitycodeswithintss)) 
-    let printreadyvariantsinambiguitycodesandtss = DL.concat variantsinambiguitycodesandtss
+    let printreadyvariantsinambiguitycodesandtss = variantsinambiguitycodesandtss
     --Prepare final print ready files with headers.
     let finalprintreadywithintss = [["Variant","Region","Variant_Within_Region"]] ++ printreadywithintss
     let finalprintreadyambiguitycodeswithintss = [["Ambiguity_Code","Mapped_Nucleotide_String","Chromosome","TSS","Strand","SYMBOL","Ambiguity_Code_String_Locations_Within_TSS"]] ++ printreadyambiguitycodeswithintss
-    let finalprintreadyvariantsinambiguitycodesandtss = [["Ambiguity_Code","Mapped_Nucleotide_String","Variant","Region","Variant_Within_Region","Ambiguity_Code_String_Locations_Within_TSS"]] ++ printreadyvariantsinambiguitycodesandtss
+    let finalprintreadyvariantsinambiguitycodesandtss = [["Ambiguity_Code","Mapped_Nucleotide_String","Ambiguity_Code_String_Locations_Within_TSS","Variant","Region","Variant_Within_Region"]] ++ printreadyvariantsinambiguitycodesandtss
     --Print  withintss, ambiguitycodeswithintss, and variantsinambiguitycodesandtss to files. 
     finalprintreadywithintss `CD.deepseq` printFile options "variants.tsv" finalprintreadywithintss
     finalprintreadyambiguitycodeswithintss `CD.deepseq` printFile options "ambiguity_codes.tsv" finalprintreadyambiguitycodeswithintss
