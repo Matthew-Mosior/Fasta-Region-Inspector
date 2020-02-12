@@ -108,7 +108,7 @@ These mapped ambiguity code strings will be used for genes where the TSS is on t
 
 **FRI** automatically calculates the **reverse complement** for each individual input ambiguity code string, so the following will also be taken into account given the input above:<br/><br/>
 
-`;WRCY;WRC;YYGG;CCGY;` -> ;`RGYW;RGY;CCRR;RCGG;`<br/>,<br/>
+`;WRCY;WRC;YYGG;CCGY;` -> `;RGYW;RGY;CCRR;RCGG;`<br/>,<br/>
 
 So, **FRI** see this as: `;[A|G]G[C|T][A|T];[A|G]G[C|T];CC[A|G][A|G];[A|G]CGG;`<br/><br/>
 
