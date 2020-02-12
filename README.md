@@ -116,7 +116,7 @@ These mapped ambiguity code strings will be used for genes where the TSS is on t
 
 Please see https://www.dnabaser.com/articles/IUPAC%20ambiguity%20codes.html for nucleotide ambiguity codes.<br/><br/>
 
-Please see for example **Variant Input** and **Region Input**.
+Please see [examples](https://github.com/Matthew-Mosior/Fasta-Region-Inspector/tree/master/examples) for actual test **Variant Input** and **Region Input**.
 
 ## Usage
 
