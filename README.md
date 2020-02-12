@@ -63,3 +63,41 @@ To install the peripheral packages **fri.hs** requires, you can call the followi
 
 ## Input
 
+**FRI** requires three inputs:<br/><br/>
+
+1. **Variant Input** - This input tsv file needs to have the following fields:<br/><br/>
+
+`Sample\tSymbol\tChromosome\tStart\tStop\tRef\tAlt`<br/><br/>
+
+This file hold all of variant information.<br/><br/>
+
+2. **Region Input** - This input tsv file needs to have the following fields:<br/><br/>
+
+`Chromosome\tTSS\tStrand\tGene_Name`<br/><br/>
+
+This file holds all of the corresponding region information.<br/><br/>
+
+To create this file, you will typically take each variant of interest's corresponding `ENST`, and query [bioMart](https://useast.ensembl.org/biomart/martview) to return the following fields:<br/>
+
+`Gene stable ID`<br/>
+`Transcript stable ID`<br/>
+`Strand`<br/>
+`Chromosome/scaffold name`<br/>
+`Transcription start site (TSS)`<br/> 
+`Gene name`<br/><br/>
+
+You can then subset this file to contain only fields `Chromosome/scaffold name`, `Transcription start site (TSS)`, `Strand` and `Gene name`.<br/><br/>
+
+**IMPORTANT: Remove the "chr" before the chromosome number.**<br/><br/>
+
+3. **Ambiguity Codes String** - This string argument describes the ambiguity codes to search for within the TSS of each gene.<br/><br/>
+
+The user may define as many ambiguity code strings as desired, but keep in mind, the more ambiguity codes you input, the more strings that need to be searched for within the TSS.<br/><br/>
+
+The string input is **semicolon** delimited and the string needs to **start** and **end** with a **semicolon**.<br/><br/>
+
+To following is an example string:<br/><br/>
+
+Assume the user wants to search for ``, ``, `` and `` in the TSS.<br/><br/>
+
+**Ambiguity Code String** -> `;WRCY;WRC;YYGG;CCGY;`<br/><br/>
