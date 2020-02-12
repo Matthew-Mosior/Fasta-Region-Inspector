@@ -114,4 +114,15 @@ So, **FRI** see this as: `;[A|G]G[C|T][A|T];[A|G]G[C|T];CC[A|G][A|G];[A|G]CGG;`
 
 These mapped ambiguity code strings will be used for genes where the TSS is on the reverse (-1) strand.<br/><br/>
 
-The foll
+Please see https://www.dnabaser.com/articles/IUPAC%20ambiguity%20codes.html for nucleotide ambiguity codes.<br/><br/>
+
+Please see for example **Variant Input** and **Region Input**.
+
+## Usage
+
+**fri.hs** is easy to use.<br/><br/>
+You can call it using the **runghc** command provided by the GHC compiler as such: (**NOT RECOMMENDED**)<br/>
+`$ runghc fri.hs -o "/path/to/output/directory/" all_sequences.fa fasta-region-inspection-region-input_final_final.tsv fasta-region-inspection-variants-input_final.tsv ";WRCY;WRC;YYGG;CCGY;"`<br/><br/>
+For maximum performance, please compile and run the source code as follows: (**RECOMMENDED**)<br/>
+`$ ghc -O2 -o FRI fri.hs`<br/>
+`$ ./FRI -o "/path/to/output/directory/" all_sequences.fa fasta-region-inspection-region-input_final_final.tsv fasta-region-inspection-variants-input_final.tsv ";WRCY;WRC;YYGG;CCGY;"`<br/><br/>
