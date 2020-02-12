@@ -110,7 +110,7 @@ These mapped ambiguity code strings will be used for genes where the TSS is on t
 
 `;WRCY;WRC;YYGG;CCGY;` -> ;`RGYW;RGY;CCRR;RCGG;`<br/>,<br/>
 
-So, **FRI** see this as: `;[A|G]G[C|T][A|T];[A|G]G[C|T];CC[A|G][A|G];[A|G]CGG;`
+So, **FRI** see this as: `;[A|G]G[C|T][A|T];[A|G]G[C|T];CC[A|G][A|G];[A|G]CGG;`<br/><br/>
 
 These mapped ambiguity code strings will be used for genes where the TSS is on the reverse (-1) strand.<br/><br/>
 
