@@ -106,7 +106,7 @@ Assume the user wants to search for `WRCY`, `WRC`, `YYGG` and `CCGY` in the TSS.
 
 These mapped ambiguity code strings will be used for genes where the TSS is on the forward (1) strand.<br/><br/>
 
-**FRI** automatically calculates the **reverse complement** to each individual input ambiguity code string, so the following will also be taken into account given the input above:<br/><br/>
+**FRI** automatically calculates the **reverse complement** for each individual input ambiguity code string, so the following will also be taken into account given the input above:<br/><br/>
 
 `;WRCY;WRC;YYGG;CCGY;` -> ;`RGYW;RGY;CCRR;RCGG;`<br/>,<br/>
 
