@@ -126,3 +126,30 @@ You can call it using the **runghc** command provided by the GHC compiler as suc
 For maximum performance, please compile and run the source code as follows: (**RECOMMENDED**)<br/>
 `$ ghc -O2 -o FRI fri.hs`<br/>
 `$ ./FRI -o "/path/to/output/directory/" all_sequences.fa fasta-region-inspection-region-input_final_final.tsv fasta-region-inspection-variants-input_final.tsv ";WRCY;WRC;YYGG;CCGY;"`<br/><br/>
+
+## Arguments
+
+**FRI** has few different command line arguments:<br/>
+```
+Fasta Region Inspector, Copyright (c) 2020 Matthew Mosior.
+Usage: fri [-vV?o] [Fasta File] [Region File] [Variant File] [Ambiguity Codes String]
+  -v               --verbose                       Output on stderr.
+  -V, -?           --version                       Show version number.
+  -o OUTDIRECTORY  --outputdirectory=OUTDIRECTORY  The directory path where output files will be printed.
+                   --TSSwindowsize=TSSWINSIZE      The size of the window of which to search each region from the TSS.
+                   --help                          Print this help message.
+```
+The `-v` option, the `verbose` option, will provide a full error message.<br/>
+The `-V` option, the `version` option, will show the version of `bvp` in use.<br/>
+The `-o` option, the `outputdirectory` option, is used to specify the directory where output files will be printed.<br/>
+The `--TSSwindowsize` option specifies size of the window of which to search each region from the TSS (default: 2000 bp).<br/>
+Finally, the `--help` option outputs the `help` message seen above.<br/><br/>
+
+## Docker
+
+A docker container exists that contains all the necessary software to run **FRI**: `matthewmosior/fastaregioninspector:final`<br/><br/>
+
+## Credits
+
+Documentation was added February 2020.<br/>
+Author : [Matthew Mosior](https://github.com/Matthew-Mosior)
