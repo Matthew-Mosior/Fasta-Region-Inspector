@@ -140,7 +140,7 @@ Usage: fri [-vV?o] [Fasta File] [Region File] [Variant File] [Ambiguity Codes St
                    --help                          Print this help message.
 ```
 The `-v` option, the `verbose` option, will provide a full error message.<br/>
-The `-V` option, the `version` option, will show the version of `bvp` in use.<br/>
+The `-V` option, the `version` option, will show the version of `fri` in use.<br/>
 The `-o` option, the `outputdirectory` option, is used to specify the directory where output files will be printed.<br/>
 The `--TSSwindowsize` option specifies size of the window of which to search each region from the TSS (default: 2000 bp).<br/>
 Finally, the `--help` option outputs the `help` message seen above.<br/><br/>
