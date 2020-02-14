@@ -22,8 +22,8 @@ The `Knuth-Morris-Pratt` implementation was chosen as opposed to other string-se
 
 Generating all posssible strings that match a regular expression is needed for this program, as the user defined ambiguity code string(s) can be thought of as regular expressions.<br/>
 [Thompson's construction algorithm](https://en.wikipedia.org/wiki/Thompson%27s_construction) can be used to create a nondeterministic finite automaton (NFA) to solve this problem.<br/>
-An example of tranforming an ambiguity code string into a regular expression would be the following:<br/>
-**ambiguity code**: `WRCY` <-> **regular expression**: `[A|T][A|G]C[C|T]`<br/>
+An example of tranforming an ambiguity code string into a regular expression would be the following:<br/><br/>
+**ambiguity code**: `WRCY` <-> **regular expression**: `[A|T][A|G]C[C|T]`<br/><br/>
 **FRI** utilizes the [sbv](https://hackage.haskell.org/package/sbv) package to generate all possible strings from user-defined ambiguity code(s), which utilizes a theorem prover to construct a NFA.<br/>
 
 ## Prerequisites
