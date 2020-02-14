@@ -21,7 +21,7 @@ String-searching plays a large role in this program, as it makes up an overwhelm
 The `Knuth-Morris-Pratt` implementation was chosen as opposed to other string-searching algorithms like `Boyer-Moore` or `Rabin-Karp` due to its strength with low complexity search alphabets (ATGC). <br/><br/>
 
 Generating all posssible strings that match a regular expression is needed for this program, as the user defined ambiguity code string(s) can be thought of as regular expressions.<br/>
-[Thompson's construction algorithm](https://en.wikipedia.org/wiki/Thompson%27s_construction) can be used to create a nondeterministic finite automaton (NFA) to solve this problem.<br/>
+[Thompson's construction algorithm](https://en.wikipedia.org/wiki/Thompson%27s_construction) can be used to create a nondeterministic finite automaton (NFA) to solve this problem.<br/><br/>
 An example of tranforming an ambiguity code string into a regular expression would be the following:<br/><br/>
 **ambiguity code**: `WRCY` <-> **regular expression**: `[A|T][A|G]C[C|T]`<br/><br/>
 **FRI** utilizes the [sbv](https://hackage.haskell.org/package/sbv) package to generate all possible strings from user-defined ambiguity code(s), which utilizes a theorem prover to construct a NFA.<br/>
