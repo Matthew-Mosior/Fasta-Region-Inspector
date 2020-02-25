@@ -4,7 +4,7 @@
 
 **Fasta-Region-Inspector (FRI)** is a computational tool for analyzing somatic hypermutation.<br/>
 This haskell script takes in variant information, corresponding region information, and ambiguity code string(s) to determine:
-1. Whether the user-defined variants are within the transcription start site (TSS) of the corresponding gene.
+1. Whether the user-defined variants are within 2 kb of the transcription start site (TSS) of the corresponding gene.
 2. All possible start locations of mapped ambiguity code strings within 2 Kb of TSS.
 3. Final list of user-defined variants that lie within an mapped ambiguity code string inside of a 2 Kb window of TSS of corresponding gene.<br/><br/>
 
