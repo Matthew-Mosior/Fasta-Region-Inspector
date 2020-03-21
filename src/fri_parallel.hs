@@ -670,7 +670,7 @@ processArgsAndFiles (options,files) = do
     let allmappedambiguitystrstuple = stringToTuple allmappedambiguitystrs 
     --Determine whether there are ambiguity codes strings
     --present within the TSS of each region (PARALLELIZED). 
-    let ambiguitycodeswithintss = (ambiguityCodesWithinRegionCheck (ambiguitycodesfinaltuple ++ ambiguitycodesreversecomplementstuple) allmappedambiguitystrstuple regionsnoheader readfastafile options) `CPS.using` (CPS.parList CPS.rdeepseq)
+    let ambiguitycodeswithintss = (ambiguityCodesWithinRegionCheck (ambiguitycodesfinaltuple ++ ambiguitycodesreversecomplementstuple) allmappedambiguitystrstuple regionsnoheader readfastafile options) `CPS.using` (CPS.parList CPS.rseq)
     --Prepare ambiguitycodeswithintss for printing.
     let analysisreadyambiguitycodeswithintss = prepareAmbiguityCodesWithinTSS ambiguitycodeswithintss 
     --Determine whether there are variants present
