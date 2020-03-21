@@ -388,8 +388,10 @@ ambiguityCodesWithinRegionCheckSmall xs      rs    (y:ys)   zs    opts  = if y D
         subStrLocations []     []    _  (_:_) = []
         subStrLocations []     (_:_) _  _     = []     
         subStrLocations xs     ys    zs rs    = if (ys DL.!! 2 == "-1")
-                                                    then DL.map (DL.map (\i -> ((((read (ys DL.!! 1)) - (zs)) + i) + 2))) (subStrLocationsSmallReverse xs ys zs rs)
-                                                    else DL.map (DL.map (\i -> ((read (ys DL.!! 1)) + i))) (subStrLocationsSmallForward xs ys zs rs)
+                                                    then (DL.map (DL.map (\i -> ((((read (ys DL.!! 1)) - (zs)) + i) + 2))) (subStrLocationsSmallReverse xs ys zs rs))
+                                                         `CPS.using` (CPS.parList CPS.rdeepseq)
+                                                    else (DL.map (DL.map (\i -> ((read (ys DL.!! 1)) + i))) (subStrLocationsSmallForward xs ys zs rs))
+                                                         `CPS.using` (CPS.parList CPS.rdeepseq)
         --subStrLocationsSmallReverse -> This function will
         --find the locations for all given substrings
         --found using allStrGeneration.
@@ -670,7 +672,7 @@ processArgsAndFiles (options,files) = do
     let allmappedambiguitystrstuple = stringToTuple allmappedambiguitystrs 
     --Determine whether there are ambiguity codes strings
     --present within the TSS of each region (PARALLELIZED). 
-    let ambiguitycodeswithintss = (ambiguityCodesWithinRegionCheck (ambiguitycodesfinaltuple ++ ambiguitycodesreversecomplementstuple) allmappedambiguitystrstuple regionsnoheader readfastafile options) `CPS.using` (CPS.parList CPS.rseq)
+    let ambiguitycodeswithintss = ambiguityCodesWithinRegionCheck (ambiguitycodesfinaltuple ++ ambiguitycodesreversecomplementstuple) allmappedambiguitystrstuple regionsnoheader readfastafile options
     --Prepare ambiguitycodeswithintss for printing.
     let analysisreadyambiguitycodeswithintss = prepareAmbiguityCodesWithinTSS ambiguitycodeswithintss 
     --Determine whether there are variants present
