@@ -13,7 +13,7 @@ This haskell script takes in variant information, corresponding region informati
 2. **ambiguity_codes.tsv** - Outputs list of mapped ambiguity codes strings, along with corresponding region information, and all start locations where these mapped ambiguity code strings are found.
 3. **variants_in_ambiguity_codes.tsv** - Outputs final list of user-defined variants that are within 2 Kb of TSS of corresponding gene that lie within a mapped ambiguity code string.
 
-Downstream analysis is left to the user, as the output files can easily be filtered using a scripting language like **awk**.  Filtering on reference/alternate bases, strand orientation (1 vs. -1), and SYMBOL (gene) are some examples of ways to continue narrowing down the output of **FRI**.
+Downstream analysis is left to the user, as the output files can easily be filtered using a scripting language like **awk**.  Filtering on reference/alternate bases, strand orientation (1 vs. -1), and SYMBOL (gene) are some examples of ways to continue narrowing down the output of **FRI**.  After filtering, basic statistics summarizing variants within ambiguity codes is fairly simple, and can give the user some perspective on which patient(s) phenotypes may be explained by somatic hypermutation.
 
 ## Theory and Implementation
 
