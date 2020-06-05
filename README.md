@@ -131,6 +131,10 @@ For maximum performance, please compile and run the source code as follows: (**R
 `$ ghc -O2 -o FRI fri.hs`<br/>
 `$ ./FRI -o "/path/to/output/directory/" all_sequences.fa fasta-region-inspection-region-input_final_final.tsv fasta-region-inspection-variants-input_final.tsv ";WRCY;WRC;YYGG;CCGY;"`<br/><br/>
 
+There is a know issue with **FRI** where you will get all three expected output files, but both **ambiguity_codes.tsv** and **variants_in_ambigiuty_codes.tsv** are empty (program stalls).  This is a memory related issue, the function **awef** is the culprit here as it performs a knuth-morris-pratt string search on each 2 Kb TSS chunk of the fasta for each mapped ambiguity code string per gene defined in the region input.<br/><br/>
+
+To remedy this, you need to provide more memory to **FRI**.
+
 ## Arguments
 
 **FRI** has few different command line arguments:<br/>
