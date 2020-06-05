@@ -118,7 +118,7 @@ Please see https://www.dnabaser.com/articles/IUPAC%20ambiguity%20codes.html for 
 
 Please see [examples](https://github.com/Matthew-Mosior/Fasta-Region-Inspector/tree/master/examples) for actual test **Variant Input** and **Region Input**.<br/><br/>
 
-4. **Fasta File** - The argument is the fasta file used to string search against.    
+4. **Fasta File** - The argument is the fasta file used to string search against.<br/><br/>    
 
 **IMPORTANT: Make sure to prefix each chromosome with "chr" before the chromosome number (i.e. chrX, chr2).**<br/><br/>
 
