@@ -63,7 +63,7 @@ To install the peripheral packages **fri.hs** requires, you can call the followi
 
 ## Input
 
-**FRI** requires three inputs:<br/><br/>
+**FRI** requires four inputs:<br/><br/>
 
 1. **Variant Input** - This input tsv file needs to have the following fields:<br/><br/>
 
@@ -117,6 +117,10 @@ These mapped ambiguity code strings will be used for genes where the TSS is on t
 Please see https://www.dnabaser.com/articles/IUPAC%20ambiguity%20codes.html for nucleotide ambiguity codes.<br/><br/>
 
 Please see [examples](https://github.com/Matthew-Mosior/Fasta-Region-Inspector/tree/master/examples) for actual test **Variant Input** and **Region Input**.
+
+4. **Fasta File** - The argument is the fasta file used to string search against.    
+
+**IMPORTANT: Make sure to prefix each chromosome with "chr" before the chromosome number (i.e. chrX, chr2).**<br/><br/>
 
 ## Usage
 
