@@ -10,11 +10,12 @@
 {-=are found in these specified ambiguity codes.=-}
 
 
-{-Syntax extension by language pragma.-}
+{-Language extension.-}
 
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE MultiWayIf #-}
 
-{--------------------------------------}
+{---------------------}
 
 {-Imports-}
 
@@ -40,7 +41,6 @@ import System.Environment as SE
 import System.Exit as SX
 import System.IO as SIO
 import System.IO.Temp as SIOT
-import Text.PrettyPrint.Boxes as TPB
 import Text.Regex.TDFA as TRTDFA
 
 {---------}
@@ -49,11 +49,12 @@ import Text.Regex.TDFA as TRTDFA
 {-Custom CML Option Datatype.-}
 
 data Flag
-    = Verbose                -- -v
-    | Version                -- -V -?
-    | OutputDirectory String -- -o
-    | TSSWindowSize   String -- 
-    | Help                   -- --help
+    = Verbose                   -- -v
+    | Version                   -- -V -?
+    | OutputDirectory    String -- -o
+    | TSSWindowSize      String --
+    | IgnoreStrandedness        --
+    | Help                      -- --help
     deriving (Eq,Ord,Show)
 
 {-----------------------------}
@@ -72,6 +73,12 @@ isOutputDirectory _                   = False
 isTSSWindowSize :: Flag -> Bool
 isTSSWindowSize (TSSWindowSize _) = True
 isTSSWindowSize _                 = False
+
+--isIgnoreStrandedness -> This function will
+--test for the IgnoreStrandedness flag.
+isIgnoreStrandedness :: Flag -> Bool
+isIgnoreStrandedness IgnoreStrandedness = True
+isIgnoreStrandedness _                  = False
 
 {------------------------------------------}
 
@@ -130,6 +137,7 @@ extractunQD (QualData unQD) = unQD
 
 {----------------------------------------------------}
 
+
 {-Option Description function relating to datatype above.-}
 
 --options -> This function will
@@ -140,6 +148,7 @@ options =
       Option ['V','?'] ["version"]             (NoArg Version)                         "Show version number.",
       Option ['o']     ["outputdirectory"]     (ReqArg OutputDirectory "OUTDIRECTORY") "The directory path where output files will be printed.",
       Option []        ["TSSwindowsize"]       (ReqArg TSSWindowSize "TSSWINSIZE")     "The size of the window of which to search each region from the TSS.",
+      Option []        ["IgnoreStrandedness"]  (NoArg IgnoreStrandedness)              "Ignore the strand when searching for ambiguity codes.",
       Option []        ["help"]                (NoArg Help)                            "Print this help message."
     ]
 
@@ -187,11 +196,13 @@ compilerOpts argv =
             acmisserror     = "Ambiguity codes string missing.\n\
                               \Please provide ambiguity codes string with the following structure:\n\
                               \;[CODE1];[CODE2];...;[CODEN];\n\
-                              \Please see https://www.dnabaser.com/articles/IUPAC%20ambiguity%20codes.html for more information on ambiguity codes.\n"
+                              \Please see https://www.dnabaser.com/articles/IUPAC%20ambiguity%20codes.html\
+                              \for more information on ambiguity codes.\n"
             acerror         = "Incorrect structure of ambiguity codes string.\n\
                               \Please provide ambiguity codes string with the following structure:\n\
                               \;[CODE1];[CODE2];...;[CODEN];\n\
-                              \Please see https://www.dnabaser.com/articles/IUPAC%20ambiguity%20codes.html for more information on ambiguity codes.\n"
+                              \Please see https://www.dnabaser.com/articles/IUPAC%20ambiguity%20codes.html\
+                              \ for more information on ambiguity codes.\n"
             tsswinsizeerror = "Incorrect structure of TSS window size string.\n\
                               \This string should only contain digits (0..9).\n"
           
@@ -237,21 +248,40 @@ strToBSC8 xs = DBC.pack xs
 
 {----------------------------}
 
+
 {-Ambiguity Codes functions.-}
 
 --ambiguityCodesCheck -> This function will
 --check that the ambiguity codes string 
 --provided by the user has the correct structure.
 ambiguityCodesCheck :: String -> Bool
-ambiguityCodesCheck xs = if DL.head xs == ';' &&
-                            DL.last xs == ';' &&
-                            DL.all (\y -> y `DL.elem` nucleotideAmbiguityCodes) (DL.filter (\x -> x /= ';') xs) 
-                             then True
-                             else False 
+ambiguityCodesCheck xs = if | DL.head xs == ';' &&
+                              DL.last xs == ';' &&
+                              DL.all (\y -> y `DL.elem` nucleotideAmbiguityCodes) 
+                                     (DL.filter (\x -> x /= ';') xs) 
+                            -> True
+                            | otherwise
+                            -> False 
     where
         --Local definition.--
         --nucleotideAmbiguityCodes
-        nucleotideAmbiguityCodes = ['A','G','C','T','Y','R','W','S','K','M','D','V','H','B','X','N','-']
+        nucleotideAmbiguityCodes = ['A'
+                                   ,'G'
+                                   ,'C'
+                                   ,'T'
+                                   ,'Y'
+                                   ,'R'
+                                   ,'W'
+                                   ,'S'
+                                   ,'K'
+                                   ,'M'
+                                   ,'D'
+                                   ,'V'
+                                   ,'H'
+                                   ,'B'
+                                   ,'X'
+                                   ,'N'
+                                   ,'-']
         ---------------------
 
 {----------------------------}
@@ -263,9 +293,10 @@ ambiguityCodesCheck xs = if DL.head xs == ';' &&
 --check that the TSSWindowSize string
 --provided by the user has the correct structure.
 tssWindowSizeCheck :: String -> Bool
-tssWindowSizeCheck xs = if (DL.all (DC.isDigit) xs)
-                            then True
-                            else False
+tssWindowSizeCheck xs = if | DL.all (DC.isDigit) xs
+                           -> True
+                           | otherwise
+                           -> False
 
 {--------------------------}
 
@@ -280,17 +311,20 @@ variantWithinRegionCheck :: [Flag] -> [[String]] -> [[String]] -> [[([String],[S
 variantWithinRegionCheck []    []     []    = []
 variantWithinRegionCheck []    []     (_:_) = []
 variantWithinRegionCheck (_:_) []     _     = []
-variantWithinRegionCheck opts  (x:xs) ys    = if DL.length (DL.filter (isTSSWindowSize) opts) > 0
-                                                  then do --Grab just "TSSWINSIZE".
-                                                      let tsswinsize = DL.head (DL.filter (isTSSWindowSize) opts)    
-                                                      --Grab the string from tsswinsize.
-                                                      let tsswinsizestring = extractTSSWindowSize tsswinsize
-                                                      --Check to see if variant is within tsswinsizestring range of region.
-                                                      [variantRegionCheck x ys (read tsswinsizestring)] ++ (variantWithinRegionCheck opts xs ys)
-                                                  else do --User did not provide TSSWindowSize argument.
-                                                          --Use 2 kb as default TSS window size. 
-                                                          --Call variantsWithinRegionCheckDefault and recurse.
-                                                          [variantRegionCheck x ys 2000] ++ (variantWithinRegionCheck opts xs ys)
+variantWithinRegionCheck opts  (x:xs) ys    = if | DL.length (DL.filter (isTSSWindowSize) opts) > 0
+                                                 -> do --Grab just "TSSWINSIZE".
+                                                       let tsswinsize = DL.head (DL.filter (isTSSWindowSize) opts)    
+                                                       --Grab the string from tsswinsize.
+                                                       let tsswinsizestring = extractTSSWindowSize tsswinsize
+                                                       --Check to see if variant is within tsswinsizestring range of region.
+                                                       [variantRegionCheck x ys (read tsswinsizestring)] 
+                                                       ++ (variantWithinRegionCheck opts xs ys)
+                                                 | otherwise
+                                                 -> do --User did not provide TSSWindowSize argument.
+                                                       --Use 2 kb as default TSS window size. 
+                                                       --Call variantsWithinRegionCheckDefault and recurse.
+                                                       [variantRegionCheck x ys 2000] 
+                                                       ++ (variantWithinRegionCheck opts xs ys)
     where
         --Local function definition.--
         --variantRegionCheck -> This function will
@@ -306,15 +340,16 @@ variantWithinRegionCheck opts  (x:xs) ys    = if DL.length (DL.filter (isTSSWind
         windowChecker :: [String] -> [[String]] -> Int -> [([String],[String],Char)]
         windowChecker []     []     _  = []
         windowChecker (_:_)  []     _  = []
-        windowChecker x      (y:ys) z  = if ((y !! 2) == "-1") &&
-                                            (((read (y !! 1) :: Int) - z) <= (read (x !! 3) :: Int)) &&
-                                            ((read (x !! 3) :: Int) <= (read (y !! 1) :: Int))
-                                              then [(x,y,'Y')] ++ (windowChecker x ys z)
-                                              else if ((y !! 2) == "1") &&
-                                                      ((read (y !! 1) :: Int) <= (read (x !! 3) :: Int)) &&
-                                                      ((read (x !! 3) :: Int) <= (read (y !! 1) :: Int) + z)
-                                                        then [(x,y,'Y')] ++ (windowChecker x ys z)
-                                                        else [(x,y,'N')] ++ (windowChecker x ys z)
+        windowChecker x      (y:ys) z  = if | ((y !! 2) == "-1") &&
+                                              (((read (y !! 1) :: Int) - z) <= (read (x !! 3) :: Int)) &&
+                                              ((read (x !! 3) :: Int) <= (read (y !! 1) :: Int))
+                                            -> [(x,y,'Y')] ++ (windowChecker x ys z)
+                                            | ((y !! 2) == "1") &&
+                                              ((read (y !! 1) :: Int) <= (read (x !! 3) :: Int)) &&
+                                              ((read (x !! 3) :: Int) <= (read (y !! 1) :: Int) + z)
+                                            -> [(x,y,'Y')] ++ (windowChecker x ys z)
+                                            | otherwise
+                                            -> [(x,y,'N')] ++ (windowChecker x ys z)
         ------------------------------
 
 --prepareWithinTSS -> This function will
@@ -329,7 +364,9 @@ prepareWithinTSS (x:xs) = [convertToList x] ++ (prepareWithinTSS xs)
         --convert 4-tuple to list.
         convertToList :: [([String],[String],Char)] -> [String]
         convertToList [] = []
-        convertToList xs = DL.concat (DL.concat (DL.map (\(a,b,c) -> [[DL.intercalate ":" a] ++ [DL.intercalate ":" b] ++ [[c]]]) xs))
+        convertToList xs = DL.concat (DL.concat 
+                                     (DL.map (\(a,b,c) -> 
+                                     [[DL.intercalate ":" a] ++ [DL.intercalate ":" b] ++ [[c]]]) xs))
         ----------------------
 
 {------------------------}
@@ -350,7 +387,8 @@ ambiguityCodesWithinRegionCheck (_:_)  _       []    _     _     = []
 ambiguityCodesWithinRegionCheck []     []      (_:_) _     _     = []
 ambiguityCodesWithinRegionCheck (_:_)  []      (_:_) _     _     = []
 ambiguityCodesWithinRegionCheck []     (_:_)   (_:_) _     _     = []
-ambiguityCodesWithinRegionCheck (x:xs) (r:rs)  ys    zs    opts  = [ambiguityCodesWithinRegionCheckSmall x r ys zs opts] ++ (ambiguityCodesWithinRegionCheck xs rs ys zs opts)
+ambiguityCodesWithinRegionCheck (x:xs) (r:rs)  ys    zs    opts  = [ambiguityCodesWithinRegionCheckSmall x r ys zs opts] 
+                                                                   ++ (ambiguityCodesWithinRegionCheck xs rs ys zs opts)
 --ambiguityCodesWithinRegionCheckSmall -> This function will
 --check to see if the ambiguity codes are within genes
 --2 kb (or custom TSS window size if provided)
@@ -361,22 +399,57 @@ ambiguityCodesWithinRegionCheckSmall ([],[]) []    []       []    (_:_) = []
 ambiguityCodesWithinRegionCheckSmall ([],[]) []    []       (_:_) _     = []
 ambiguityCodesWithinRegionCheckSmall ([],[]) (_:_) []       _     _     = []
 ambiguityCodesWithinRegionCheckSmall (_,_)   _     []       _     _     = []
-ambiguityCodesWithinRegionCheckSmall xs      rs    (y:ys)   zs    opts  = if y DL.!! 2 == snd xs
-                                                                              then if DL.length (DL.filter (isTSSWindowSize) opts) > 0
-                                                                                  then do --Grab just "TSSWINSIZE".
-                                                                                          let tsswinsize = DL.head (DL.filter (isTSSWindowSize) opts)
-                                                                                          --Grab the string from tsswinsize.
-                                                                                          let tsswinsizestring = extractTSSWindowSize tsswinsize
-                                                                                          --Grab locations of mapped am codes,
-                                                                                          --and recurse.
-                                                                                          [(fst xs,DL.map (fst) rs,y,subStrLocations (DL.map (fst) rs) y (read tsswinsizestring) zs)] ++ (ambiguityCodesWithinRegionCheckSmall xs rs ys zs opts)
-                                                                                  else do --User did not provide TSSWindowSize argument.
-                                                                                          --Use 2 kb as default TSS window size.
-                                                                                          [(fst xs,DL.map (fst) rs,y,subStrLocations (DL.map (fst) rs) y 2000 zs)] ++ (ambiguityCodesWithinRegionCheckSmall xs rs ys zs opts)
-                                                                          else do --Current ambiguity codes and mapped strings
-                                                                                  --are not correct for region strand 
-                                                                                  --(i.e. "-1" != "1" or "1" != "-1").  
-                                                                                  ambiguityCodesWithinRegionCheckSmall xs rs ys zs opts       
+ambiguityCodesWithinRegionCheckSmall xs      rs    (y:ys)   zs    opts  = 
+    if | DL.length (DL.filter (isIgnoreStrandedness) opts) == 0
+       -> if | y DL.!! 2 == snd xs
+             -> if | DL.length (DL.filter (isTSSWindowSize) opts) > 0
+                   -> do --Grab just "TSSWINSIZE".
+                         let tsswinsize = DL.head (DL.filter (isTSSWindowSize) opts)
+                         --Grab the string from tsswinsize.
+                         let tsswinsizestring = extractTSSWindowSize tsswinsize
+                         --Grab locations of mapped am codes,
+                         --and recurse.
+                         [(fst xs
+                          ,DL.map (fst) rs
+                          ,y
+                          ,subStrLocations (DL.map (fst) rs) y (read tsswinsizestring) zs)] 
+                         ++ (ambiguityCodesWithinRegionCheckSmall xs rs ys zs opts)
+                   | otherwise
+                   -> do --User did not provide TSSWindowSize argument.
+                         --Use 2 kb as default TSS window size.
+                         [(fst xs
+                          ,DL.map (fst) rs
+                          ,y
+                          ,subStrLocations (DL.map (fst) rs) y 2000 zs)] 
+                         ++ (ambiguityCodesWithinRegionCheckSmall xs rs ys zs opts)
+             | otherwise 
+             -> do --Current ambiguity codes and mapped strings
+                --are not correct for region strand 
+                --(i.e. "-1" != "1" or "1" != "-1").  
+                ambiguityCodesWithinRegionCheckSmall xs rs ys zs opts
+       | otherwise
+       -> --Ignore strandedness, find both the ambiguity mapped strings
+          --and the reverse complement ambiguity mapped strings.
+          if | DL.length (DL.filter (isTSSWindowSize) opts) > 0
+             -> do --Grab just "TSSWINSIZE".
+                   let tsswinsize = DL.head (DL.filter (isTSSWindowSize) opts)
+                   --Grab the string from tsswinsize.
+                   let tsswinsizestring = extractTSSWindowSize tsswinsize
+                   --Grab locations of mapped am codes,
+                   --and recurse.
+                   [(fst xs
+                    ,DL.map (fst) rs
+                    ,y
+                    ,subStrLocations (DL.map (fst) rs) y (read tsswinsizestring) zs)] 
+                   ++ (ambiguityCodesWithinRegionCheckSmall xs rs ys zs opts)
+             | otherwise
+             -> do --User did not provide TSSWindowSize argument.
+                   --Use 2 kb as default TSS window size.
+                   [(fst xs
+                    ,DL.map (fst) rs
+                    ,y
+                    ,subStrLocations (DL.map (fst) rs) y 2000 zs)] 
+                   ++ (ambiguityCodesWithinRegionCheckSmall xs rs ys zs opts)                    
     where
         --Local definitions.--
         --subStrLocations -> This function will
@@ -386,9 +459,12 @@ ambiguityCodesWithinRegionCheckSmall xs      rs    (y:ys)   zs    opts  = if y D
         subStrLocations []     []    _  []    = []
         subStrLocations []     []    _  (_:_) = []
         subStrLocations []     (_:_) _  _     = []     
-        subStrLocations xs     ys    zs rs    = if (ys DL.!! 2 == "-1")
-                                                    then DL.map (DL.map (\i -> ((((read (ys DL.!! 1)) - (zs)) + i) + 2))) (subStrLocationsSmallReverse xs ys zs rs)
-                                                    else DL.map (DL.map (\i -> ((read (ys DL.!! 1)) + i))) (subStrLocationsSmallForward xs ys zs rs)
+        subStrLocations xs     ys    zs rs    = if | (ys DL.!! 2 == "-1")
+                                                   -> DL.map (DL.map (\i -> ((((read (ys DL.!! 1)) - (zs)) + i) + 2))) 
+                                                             (subStrLocationsSmallReverse xs ys zs rs)
+                                                   | otherwise
+                                                   -> DL.map (DL.map (\i -> ((read (ys DL.!! 1)) + i))) 
+                                                             (subStrLocationsSmallForward xs ys zs rs)
         --subStrLocationsSmallReverse -> This function will
         --find the locations for all given substrings
         --found using allStrGeneration.
@@ -396,12 +472,15 @@ ambiguityCodesWithinRegionCheckSmall xs      rs    (y:ys)   zs    opts  = if y D
         subStrLocationsSmallReverse []     []    _  []    = []
         subStrLocationsSmallReverse []     []    _  (_:_) = []
         subStrLocationsSmallReverse []     (_:_) _  _     = []
-        subStrLocationsSmallReverse (x:xs) ys    zs rs    = [DL.map (\a -> (DBC.length ((grabRegionSequence (grabFastaSequence (read (y !! 0) :: Int) rs) ys zs))) - a - 1) 
-                                                                     (DBSDFA.indices (DBC.pack x) 
-                                                                     (reverseComplementNucleotide 
-                                                                     (grabRegionSequence 
-                                                                     (grabFastaSequence (read (y !! 0) :: Int) rs) ys zs)))] 
-                                                         ++ (subStrLocationsSmallReverse xs ys zs rs)
+        subStrLocationsSmallReverse (x:xs) ys    zs rs    = [DL.map (\a -> (DBC.length 
+                                                                           ((grabRegionSequence 
+                                                                           (grabFastaSequence 
+                                                                           (read (y !! 0) :: Int) rs) ys zs))) - a - 1) 
+                                                                           (DBSDFA.indices (DBC.pack x) 
+                                                                           (reverseComplementNucleotide 
+                                                                           (grabRegionSequence 
+                                                                           (grabFastaSequence (read (y !! 0) :: Int) rs) ys zs)))] 
+                                                            ++ (subStrLocationsSmallReverse xs ys zs rs)
         --subStrLocationsSmallForward -> This function will
         --find the locations for all given substrings
         --found using allStrGeneration.
@@ -409,14 +488,19 @@ ambiguityCodesWithinRegionCheckSmall xs      rs    (y:ys)   zs    opts  = if y D
         subStrLocationsSmallForward []     []    _  []    = []
         subStrLocationsSmallForward []     []    _  (_:_) = []
         subStrLocationsSmallForward []     (_:_) _  _     = []
-        subStrLocationsSmallForward (x:xs) ys    zs rs    = [DBSDFA.indices (DBC.pack x) (grabRegionSequence (grabFastaSequence (read (y !! 0) :: Int) rs) ys zs)] ++ (subStrLocationsSmallForward xs ys zs rs)
+        subStrLocationsSmallForward (x:xs) ys    zs rs    = [DBSDFA.indices (DBC.pack x) 
+                                                                            (grabRegionSequence 
+                                                                            (grabFastaSequence 
+                                                                            (read (y !! 0) :: Int) rs) ys zs)] 
+                                                            ++ (subStrLocationsSmallForward xs ys zs rs)
         --grabRegionSequence -> This function will
         --grab the region of the correct chr 
         --returned from grabFastaSequence.
         grabRegionSequence :: DBC.ByteString -> [String] -> Int -> DBC.ByteString 
-        grabRegionSequence xs ys zs = if (ys DL.!! 2 == "-1")
-                                          then DBC.take (zs) (DBC.drop ((read (ys DL.!! 1)) - (zs - 1)) (xs))
-                                          else DBC.take (zs) (DBC.drop ((read (ys DL.!! 1)) - 1) (xs))
+        grabRegionSequence xs ys zs = if | (ys DL.!! 2 == "-1")
+                                         -> DBC.take (zs) (DBC.drop ((read (ys DL.!! 1)) - (zs - 1)) (xs))
+                                         | otherwise 
+                                         -> DBC.take (zs) (DBC.drop ((read (ys DL.!! 1)) - 1) (xs))
         --grabFastaSequence -> This function will
         --grab the correct fasta sequence
         --using chromosome information
@@ -429,19 +513,26 @@ ambiguityCodesWithinRegionCheckSmall xs      rs    (y:ys)   zs    opts  = if y D
         --in the region file.
         smallGrabFastaSequence :: Int -> [Sequence] -> [Int] -> DBC.ByteString
         smallGrabFastaSequence _ _ [] = DBC.empty
-        smallGrabFastaSequence x ys (z:zs) = if ((bslToStr (extractunSL (extractSeqLabel (ys !! z)))) == ("chr" ++ show x))
-                                                 then strToBSC8 (bslToStr (extractunSD (extractSeqData (ys !! z))))
-                                                 else smallGrabFastaSequence x ys zs
+        smallGrabFastaSequence x ys (z:zs) = if | ((bslToStr (extractunSL (extractSeqLabel (ys !! z)))) == ("chr" ++ show x))
+                                                -> strToBSC8 (bslToStr (extractunSD (extractSeqData (ys !! z))))
+                                                | otherwise
+                                                -> smallGrabFastaSequence x ys zs
         --reverseComplementNucleotide -> This function will
         --return the reverse complement of a DBC.ByteString.
         reverseComplementNucleotide :: DBC.ByteString -> DBC.ByteString
-        reverseComplementNucleotide xs = DBC.pack (DL.map (snd) (DL.concatMap (\y -> DL.filter (\(r,_) -> r == y) revcomplementmapping) (DBC.unpack (DBC.reverse xs))))
+        reverseComplementNucleotide xs = DBC.pack (DL.map (snd) 
+                                                          (DL.concatMap 
+                                                          (\y -> DL.filter (\(r,_) -> r == y) revcomplementmapping) 
+                                                          (DBC.unpack (DBC.reverse xs))))
             where
                 --Local definitions.--
                 --revcomplementmapping -> List containing reverse
                 --complement mapping for nucleotides.
                 --(NUCLEOTIDE,NUCLEOTIDE_REV_COMPLEMENT).
-                revcomplementmapping = [('A','T'),('T','A'),('G','C'),('C','G')]
+                revcomplementmapping = [('A','T')
+                                       ,('T','A')
+                                       ,('G','C')
+                                       ,('C','G')]
                 ----------------------
 
 --allStrGeneration -> This function will
@@ -458,9 +549,17 @@ allStrGenerationSmall [] = return []
 allStrGenerationSmall xs = do --Need to create all possible strings created from nucleotidemapping.
                              --Use Data.SBV library to create all possible satisfiability predicates
                              --(Strings generated from a particular regular expression pattern).
-                             generatedregexstrs <- DSBV.allSat $ \s -> (s :: SString) `DSBVRE.match` (DSBVRE.Conc (DL.map (DSBVRE.oneOf) nucleotidemappingfinal))
+                             generatedregexstrs <- DSBV.allSat $ \s -> (s :: SString) 
+                                                                       `DSBVRE.match` 
+                                                                       (DSBVRE.Conc 
+                                                                       (DL.map 
+                                                                       (DSBVRE.oneOf) nucleotidemappingfinal))
                              --Return only true results of generatedregexstrs.        
-                             return (DL.filter (\z -> not (DL.null z)) (DL.filter (\y -> DL.all (DC.isUpper) y) (DLS.splitOneOf " " (DL.filter (\x -> not (x `DL.elem` ("\"" :: String))) (show generatedregexstrs))))) 
+                             return (DL.filter (\z -> not (DL.null z)) 
+                                               (DL.filter (\y -> DL.all (DC.isUpper) y) 
+                                               (DLS.splitOneOf " " 
+                                               (DL.filter (\x -> not (x `DL.elem` ("\"" :: String))) 
+                                               (show generatedregexstrs)))))
     where
         --charConversion -> This function will
         --compute the conversion to prepare for
@@ -469,16 +568,58 @@ allStrGenerationSmall xs = do --Need to create all possible strings created from
         charConversion []     [] = []
         charConversion _      [] = []
         charConversion []     _  = []
-        charConversion (x:xs) ys = [(DL.head (DL.map (fst) (DL.filter (\(a,_) -> a == x) ys)),DL.map (snd) (DL.filter (\(a,_) -> a == x) ys))] ++ (charConversion xs ys)
+        charConversion (x:xs) ys = [(DL.head (DL.map (fst) 
+                                                     (DL.filter (\(a,_) -> a == x) ys)),
+                                                     DL.map (snd) (DL.filter (\(a,_) -> a == x) ys))] 
+                                   ++ (charConversion xs ys)
         --Local function and variable definitions.--
         --nucleotidemappingfinal -> This returns only the mapped nucleotides
         --of nucleotidemapping that fit the user defined ambiguity code string.
         nucleotidemappingfinal    = DL.map (snd) (charConversion xs nucleotidemappingfiltered) 
         --nucleotidemappingfiltered -> This returns only the mapped tuples
         --of nucleotidemapping that fit the user defined ambiguity code string.
-        nucleotidemappingfiltered = DL.filter (\(b,_) -> b `DL.elem` (DL.filter (\a -> a `DL.elem` DL.map (fst) nucleotidemapping) xs)) nucleotidemapping 
+        nucleotidemappingfiltered = DL.filter (\(b,_) -> b 
+                                                         `DL.elem` 
+                                                         (DL.filter 
+                                                         (\a -> a `DL.elem` DL.map (fst) nucleotidemapping) xs)) 
+                                                         nucleotidemapping
         --nucleotidemappings -> List containing ambiguity code mapping (AMBIGUITY_CODE,MAPPEDNUCLEOTIDE). 
-        nucleotidemapping = [('A','A'),('T','T'),('G','G'),('C','C'),('Y','C'),('Y','T'),('R','A'),('R','G'),('W','A'),('W','T'),('S','G'),('S','C'),('K','T'),('K','G'),('M','C'),('M','A'),('D','A'),('D','G'),('D','T'),('V','A'),('V','C'),('V','G'),('H','A'),('H','C'),('H','T'),('B','C'),('B','G'),('B','T'),('N','A'),('N','T'),('N','G'),('N','C'),('X','A'),('X','T'),('X','G'),('X','C')]
+        nucleotidemapping = [('A','A')
+                            ,('T','T')
+                            ,('G','G')
+                            ,('C','C')
+                            ,('Y','C')
+                            ,('Y','T')
+                            ,('R','A')
+                            ,('R','G')
+                            ,('W','A')
+                            ,('W','T')
+                            ,('S','G')
+                            ,('S','C')
+                            ,('K','T')
+                            ,('K','G')
+                            ,('M','C')
+                            ,('M','A')
+                            ,('D','A')
+                            ,('D','G')
+                            ,('D','T')
+                            ,('V','A')
+                            ,('V','C')
+                            ,('V','G')
+                            ,('H','A')
+                            ,('H','C')
+                            ,('H','T')
+                            ,('B','C')
+                            ,('B','G')
+                            ,('B','T')
+                            ,('N','A')
+                            ,('N','T')
+                            ,('N','G')
+                            ,('N','C')
+                            ,('X','A')
+                            ,('X','T')
+                            ,('X','G')
+                            ,('X','C')]
         --------------------------------------------
 
 --ambiguityCodesReverseComplement -> This function will
@@ -492,14 +633,40 @@ ambiguityCodesReverseComplement (x:xs) = [reversecomplementfinal] ++ (ambiguityC
         --reversecomplementfinal -> This returns only the
         --mapped ambiguity codes of reversecomplementfiltered 
         --reversed and in the correct order.
-        reversecomplementfinal = DL.map (snd) (DL.concatMap (\y -> DL.filter (\(r,_) -> r == y) reversecomplementfiltered) (DL.reverse x)) 
+        reversecomplementfinal = DL.map (snd) 
+                                        (DL.concatMap 
+                                        (\y -> DL.filter (\(r,_) -> r == y) reversecomplementfiltered) 
+                                        (DL.reverse x)) 
         --reversecomplementfiltered -> This returns only the mapped tuples
         --of reversecomplementmapping that fit the user defined ambiguity code string.
-        reversecomplementfiltered = DL.filter (\(b,_) -> b `DL.elem` (DL.filter (\a -> a `DL.elem` DL.map (fst) revcomplementmapping) x)) revcomplementmapping
+        reversecomplementfiltered = DL.filter (\(b,_) -> b 
+                                                         `DL.elem` 
+                                                         (DL.filter 
+                                                         (\a -> a 
+                                                                `DL.elem` 
+                                                                DL.map 
+                                                                (fst) revcomplementmapping) x))
+                                              revcomplementmapping
         --revcomplementmapping -> List containing reverse 
         --complement mapping for ambiguity codes 
         --(AMBIGUITY_CODE,AMBIGUITY_CODE_REV_COMPLEMENT).
-        revcomplementmapping = [('A','T'),('T','A'),('G','C'),('C','G'),('Y','R'),('R','Y'),('W','W'),('S','S'),('K','M'),('M','K'),('D','H'),('H','D'),('V','B'),('B','V'),('X','X'),('N','N'),('-','-')] 
+        revcomplementmapping = [('A','T')
+                               ,('T','A')
+                               ,('G','C')
+                               ,('C','G')
+                               ,('Y','R')
+                               ,('R','Y')
+                               ,('W','W')
+                               ,('S','S')
+                               ,('K','M')
+                               ,('M','K')
+                               ,('D','H')
+                               ,('H','D')
+                               ,('V','B')
+                               ,('B','V')
+                               ,('X','X')
+                               ,('N','N')
+                               ,('-','-')] 
         ---------------------- 
 
 --prepareAmbiguityCodesWithinTSS -> This function will
@@ -514,7 +681,8 @@ prepareAmbiguityCodesWithinTSS (x:xs) = (convertToList x) ++ (prepareAmbiguityCo
         --convert 4-tuple to list.
         convertToList :: [(String,[String],[String],[[Int]])] -> [[[String]]]
         convertToList [] = [] 
-        convertToList xs = DL.map (\y -> tupleToList y) (DL.map (\x -> tupleConverter x) xs)
+        convertToList xs = DL.map (\y -> tupleToList y) 
+                                  (DL.map (\x -> tupleConverter x) xs)
         --tupleToList -> This function will
         --convert a 4-tuple to a [
         tupleToList :: ([[String]],[[String]],[[String]],[[Int]]) -> [[String]]
@@ -522,12 +690,17 @@ prepareAmbiguityCodesWithinTSS (x:xs) = (convertToList x) ++ (prepareAmbiguityCo
         tupleToList ((_:_), [],    _,     _)      = []
         tupleToList ((_:_), (_:_), [],    _)      = []
         tupleToList ((_:_), (_:_), (_:_), [])     = []
-        tupleToList ((a:as),(b:bs),(c:cs),(d:ds)) = [a ++ b ++ c ++ (DL.map (show) d)] ++ (tupleToList (as,bs,cs,ds)) 
+        tupleToList ((a:as),(b:bs),(c:cs),(d:ds)) = [a ++ b ++ c ++ (DL.map (show) d)] 
+                                                    ++ (tupleToList (as,bs,cs,ds)) 
         --tupleConverter -> This function will
         --convert a 4-tuple to the corrected
         --4-tuple.
         tupleConverter :: (String,[String],[String],[[Int]]) -> ([[String]],[[String]],[[String]],[[Int]])
-        tupleConverter (a,b,c,d) = ((DL.map (\x -> [x]) (DL.replicate (DL.length b) a)),(DL.map (\x -> [x]) b),(DL.replicate (DL.length b) c),d)  
+        tupleConverter (a,b,c,d) = ((DL.map (\x -> [x]) 
+                                    (DL.replicate (DL.length b) a))
+                                   ,(DL.map (\x -> [x]) b)
+                                   ,(DL.replicate (DL.length b) c)
+                                   ,d)  
         ----------------------
 
 {---------------------------}
@@ -542,7 +715,8 @@ variantsWithinAmbiguityCodesAndTSS :: [[([String],[String],Char)]] -> [[[String]
 variantsWithinAmbiguityCodesAndTSS []     [] = []
 variantsWithinAmbiguityCodesAndTSS _      [] = []
 variantsWithinAmbiguityCodesAndTSS []     _  = []
-variantsWithinAmbiguityCodesAndTSS (x:xs) ys = (variantsWithinAmbiguityCodesAndTSSSmall variantsfiltered ys) ++ (variantsWithinAmbiguityCodesAndTSS xs ys)
+variantsWithinAmbiguityCodesAndTSS (x:xs) ys = (variantsWithinAmbiguityCodesAndTSSSmall variantsfiltered ys) 
+                                               ++ (variantsWithinAmbiguityCodesAndTSS xs ys)
     where 
       --Local definitions.--
       --variantsfiltered -> List containing only variants within TSS
@@ -554,48 +728,62 @@ variantsWithinAmbiguityCodesAndTSS (x:xs) ys = (variantsWithinAmbiguityCodesAndT
       variantsWithinAmbiguityCodesAndTSSSmall []     [] = []
       variantsWithinAmbiguityCodesAndTSSSmall _      [] = []
       variantsWithinAmbiguityCodesAndTSSSmall []     _  = []
-      variantsWithinAmbiguityCodesAndTSSSmall (x:xs) ys = (variantsAmbiguityCodesChecker x ambiguitycodesregionsfiltered) ++ (variantsWithinAmbiguityCodesAndTSSSmall xs ys)  
+      variantsWithinAmbiguityCodesAndTSSSmall (x:xs) ys = (variantsAmbiguityCodesChecker x ambiguitycodesregionsfiltered) 
+                                                          ++ (variantsWithinAmbiguityCodesAndTSSSmall xs ys)  
           where 
               --Local definitions.--
-              ambiguitycodesregionsfiltered = DL.map (DL.filter (\y -> (y DL.!! 5) == ((\(a,_,_) -> a) (x) DL.!! 1))) ys
+              ambiguitycodesregionsfiltered = DL.map (DL.filter 
+                                                     (\y -> (y DL.!! 5) == 
+                                                     ((\(a,_,_) -> a) (x) DL.!! 1))) ys
       --variantsAmbiguityCodesChecker -> This function will
       --call variantsAmbiguityCodesCheckerSmall.
       variantsAmbiguityCodesChecker :: ([String],[String],Char) -> [[[String]]] -> [[String]]
       variantsAmbiguityCodesChecker _      []     = []
-      variantsAmbiguityCodesChecker xs     (y:ys) = (variantsAmbiguityCodesCheckerSmall xs y) ++ (variantsAmbiguityCodesChecker xs ys)
+      variantsAmbiguityCodesChecker xs     (y:ys) = (variantsAmbiguityCodesCheckerSmall xs y) 
+                                                    ++ (variantsAmbiguityCodesChecker xs ys)
       --variantsAmbiguityCodesCheckerSmall -> This function will
       --call variantsAmbiguityCodesCheckerSmaller.
       variantsAmbiguityCodesCheckerSmall :: ([String],[String],Char) -> [[String]] -> [[String]]
       variantsAmbiguityCodesCheckerSmall _  []     = []
-      variantsAmbiguityCodesCheckerSmall xs (y:ys) = if not (DL.null (variantsAmbiguityCodesCheckerSmaller xs (DL.take ((DL.length y) - 6) (DL.drop 6 y)) (DL.length (y DL.!! 1))))
-                                                         then [[DL.intercalate ":" ((\(a,_,_) -> a) xs)] 
+      variantsAmbiguityCodesCheckerSmall xs (y:ys) = if | not (DL.null 
+                                                              (variantsAmbiguityCodesCheckerSmaller xs 
+                                                              (DL.take ((DL.length y) - 6) (DL.drop 6 y)) 
+                                                              (DL.length (y DL.!! 1))))
+                                                        -> [[DL.intercalate ":" ((\(a,_,_) -> a) xs)] 
                                                             ++ [DL.intercalate ":" ((\(_,b,_) -> b) xs)] 
                                                             ++ [[((\(_,_,c) -> c) xs)]]
                                                             ++ [y DL.!! 0]
                                                             ++ [y DL.!! 1]
-                                                            ++ [DL.intercalate "," (variantsAmbiguityCodesCheckerSmaller xs (DL.take ((DL.length y) - 6) (DL.drop 6 y)) (DL.length (y DL.!! 1)))]]
-                                                           ++ (variantsAmbiguityCodesCheckerSmall xs ys)
-                                                         else variantsAmbiguityCodesCheckerSmall xs ys
+                                                            ++ [DL.intercalate "," 
+                                                               (variantsAmbiguityCodesCheckerSmaller xs 
+                                                               (DL.take ((DL.length y) - 6) (DL.drop 6 y)) 
+                                                               (DL.length (y DL.!! 1)))]]
+                                                            ++ (variantsAmbiguityCodesCheckerSmall xs ys)
+                                                        | otherwise
+                                                        -> variantsAmbiguityCodesCheckerSmall xs ys
       --variantsAmbiguityCodesCheckerSmaller -> This function will
       --check whether the variant in question lies within an
       --ambiguity code sequence.
       variantsAmbiguityCodesCheckerSmaller :: ([String],[String],Char) -> [String] -> Int -> [String]
       variantsAmbiguityCodesCheckerSmaller _  []     _ = []
       variantsAmbiguityCodesCheckerSmaller xs (y:ys) z = --TSS reads in reverse direction (-1).
-                                                         if (((\(_,b,_) -> b) xs) DL.!! 2) == "-1"
-                                                             then if (read y :: Int) >= (read (((\(a,_,_) -> a) xs) DL.!! 3) :: Int) &&
-                                                                     (read (((\(a,_,_) -> a) xs) DL.!! 3) :: Int) >= ((((read y) - z) + 1) :: Int)
-                                                                 then [y] ++ (variantsAmbiguityCodesCheckerSmaller xs ys z)
-                                                                 else variantsAmbiguityCodesCheckerSmaller xs ys z
-                                                         --TSS reads in forward direction (1).
-                                                         else if (read y :: Int) <= (read (((\(a,_,_) -> a) xs) DL.!! 3) :: Int) &&
-                                                                 (read (((\(a,_,_) -> a) xs) DL.!! 3) :: Int) <= ((((read y) + z) - 1) :: Int) 
-                                                             then [y] ++ (variantsAmbiguityCodesCheckerSmaller xs ys z)
-                                                             else variantsAmbiguityCodesCheckerSmaller xs ys z
+                                                         if | (((\(_,b,_) -> b) xs) DL.!! 2) == "-1"
+                                                            -> if | (read y :: Int) >= (read (((\(a,_,_) -> a) xs) DL.!! 3) :: Int) &&
+                                                                    (read (((\(a,_,_) -> a) xs) DL.!! 3) :: Int) >= ((((read y) - z) + 1) :: Int)
+                                                                  ->[y] ++ (variantsAmbiguityCodesCheckerSmaller xs ys z)
+                                                                  | otherwise
+                                                                  -> variantsAmbiguityCodesCheckerSmaller xs ys z
+                                                            --TSS reads in forward direction (1).
+                                                            | (read y :: Int) <= (read (((\(a,_,_) -> a) xs) DL.!! 3) :: Int) &&
+                                                              (read (((\(a,_,_) -> a) xs) DL.!! 3) :: Int) <= ((((read y) + z) - 1) :: Int) 
+                                                            -> [y] ++ (variantsAmbiguityCodesCheckerSmaller xs ys z)
+                                                            | otherwise
+                                                            -> variantsAmbiguityCodesCheckerSmaller xs ys z
               ---------------------- 
       ----------------------
 
 {--------------------}
+
 
 {-Printing function.-}
 
@@ -612,13 +800,10 @@ printFile opts  filename xs    = do
     let outdir = DL.head (DL.filter (isOutputDirectory) opts)
     --Extract the string from OutputDirectory.
     let outdirstring = extractOutputDirectory outdir
-    --mapNotLast tabs and newlines in xs. 
-    let tabsandnewlinesadded = DL.map (mapNotLast (++ "\t")) xs
-    --Write the output file to the user-specified output directory.
-    SIO.writeFile (outdirstring ++ filename) $
-                  (TPB.render $
-                  (TPB.hsep 0 TPB.left . DL.map (TPB.vcat TPB.left) . DL.map (DL.map (TPB.text)))
-                  (DL.transpose tabsandnewlinesadded))
+    --mapNotLast tabs and newlines in xs.
+    let tabsandnewlinesadded = DL.intercalate "\n" (DL.map (DL.intercalate "\t") xs)
+    --Write the output to the user-specified filename.
+    SIO.writeFile (outdirstring ++ filename) $ (tabsandnewlinesadded)
 
 {---------------------}
 
@@ -652,7 +837,9 @@ processArgsAndFiles (options,files) = do
     --Read in the ambiguity codes string.
     let ambiguitycodesstring = files DL.!! 3
     --Grab just the ambiguity codes, no semicolons.
-    let ambiguitycodesfinal = (DL.filter (\x -> not (DL.null x)) (DLS.splitOn ";" ambiguitycodesstring))
+    let ambiguitycodesfinal = (DL.filter 
+                              (\x -> not (DL.null x)) 
+                              (DLS.splitOn ";" ambiguitycodesstring))
     --Create list of tuples defining directionality of ambiguitycodesfinal.
     let ambiguitycodesfinaltuple = DL.map (\x -> (x,"1")) ambiguitycodesfinal 
     --Determine whether each variant is within
@@ -669,24 +856,65 @@ processArgsAndFiles (options,files) = do
     let allmappedambiguitystrstuple = stringToTuple allmappedambiguitystrs 
     --Determine whether there are ambiguity codes strings
     --present within the TSS of each region. 
-    let ambiguitycodeswithintss = ambiguityCodesWithinRegionCheck (ambiguitycodesfinaltuple ++ ambiguitycodesreversecomplementstuple) allmappedambiguitystrstuple regionsnoheader readfastafile options
+    let ambiguitycodeswithintss = ambiguityCodesWithinRegionCheck 
+                                  (ambiguitycodesfinaltuple ++ ambiguitycodesreversecomplementstuple) 
+                                  allmappedambiguitystrstuple 
+                                  regionsnoheader 
+                                  readfastafile 
+                                  options
     --Prepare ambiguitycodeswithintss for printing.
     let analysisreadyambiguitycodeswithintss = prepareAmbiguityCodesWithinTSS ambiguitycodeswithintss 
     --Determine whether there are variants present
     --within ambiguity codes within corresponding regions.
-    let variantsinambiguitycodesandtss = ambiguitycodeswithintss `CD.deepseq` variantsWithinAmbiguityCodesAndTSS (DL.filter (\x -> not (DL.null x)) withintss) analysisreadyambiguitycodeswithintss  
+    let variantsinambiguitycodesandtss = ambiguitycodeswithintss 
+                                         `CD.deepseq` 
+                                         variantsWithinAmbiguityCodesAndTSS  
+                                         (DL.filter (\x -> not (DL.null x)) withintss) 
+                                         analysisreadyambiguitycodeswithintss  
     --Prepare withintss, ambiguitycodeswithintss, and variantsinambiguitycodesandtss for printing. 
     let printreadywithintss = prepareWithinTSS withintss
-    let printreadyambiguitycodeswithintss = ambiguitycodeswithintss `CD.deepseq` DL.concat (DL.map (DL.map (\xs -> (DL.take 6 xs) ++ [DL.intercalate "," (DL.drop 6 xs)])) (prepareAmbiguityCodesWithinTSS ambiguitycodeswithintss)) 
+    let printreadyambiguitycodeswithintss = ambiguitycodeswithintss 
+                                            `CD.deepseq` 
+                                            DL.concat 
+                                            (DL.map 
+                                            (DL.map 
+                                            (\xs -> (DL.take 6 xs) 
+                                            ++ [DL.intercalate "," (DL.drop 6 xs)])) 
+                                            (prepareAmbiguityCodesWithinTSS ambiguitycodeswithintss)) 
     let printreadyvariantsinambiguitycodesandtss = variantsinambiguitycodesandtss
     --Prepare final print ready files with headers.
-    let finalprintreadywithintss = [["Variant","Region","Variant_Within_Region"]] ++ printreadywithintss
-    let finalprintreadyambiguitycodeswithintss = [["Ambiguity_Code","Mapped_Nucleotide_String","Chromosome","TSS","Strand","SYMBOL","Ambiguity_Code_String_Locations_Within_TSS"]] ++ printreadyambiguitycodeswithintss
-    let finalprintreadyvariantsinambiguitycodesandtss = [["Variant","Region","Variant_Within_Region","Ambiguity_Code","Mapped_Nucleotide_String","Ambiguity_Code_String_Locations_Within_TSS"]] ++ printreadyvariantsinambiguitycodesandtss
+    let finalprintreadywithintss = [["Variant"
+                                    ,"Region"
+                                    ,"Variant_Within_Region"]] 
+                                   ++ printreadywithintss
+    let finalprintreadyambiguitycodeswithintss = [["Ambiguity_Code"
+                                                  ,"Mapped_Nucleotide_String"
+                                                  ,"Chromosome"
+                                                  ,"TSS"
+                                                  ,"Strand"
+                                                  ,"SYMBOL"
+                                                  ,"Ambiguity_Code_String_Locations_Within_TSS"]] 
+                                                 ++ printreadyambiguitycodeswithintss
+    let finalprintreadyvariantsinambiguitycodesandtss = [["Variant"
+                                                         ,"Region"
+                                                         ,"Variant_Within_Region"
+                                                         ,"Ambiguity_Code"
+                                                         ,"Mapped_Nucleotide_String"
+                                                         ,"Ambiguity_Code_String_Locations_Within_TSS"]] 
+                                                        ++ printreadyvariantsinambiguitycodesandtss
     --Print  withintss, ambiguitycodeswithintss, and variantsinambiguitycodesandtss to files. 
-    finalprintreadywithintss `CD.deepseq` printFile options "variants.tsv" finalprintreadywithintss
-    finalprintreadyambiguitycodeswithintss `CD.deepseq` printFile options "ambiguity_codes.tsv" finalprintreadyambiguitycodeswithintss
-    finalprintreadyvariantsinambiguitycodesandtss `CD.deepseq` printFile options "variants_in_ambiguity_codes.tsv" finalprintreadyvariantsinambiguitycodesandtss 
+    finalprintreadywithintss `CD.deepseq` printFile 
+                                          options 
+                                          "variants.tsv" 
+                                          finalprintreadywithintss
+    finalprintreadyambiguitycodeswithintss `CD.deepseq` printFile 
+                                                        options 
+                                                        "ambiguity_codes.tsv" 
+                                                        finalprintreadyambiguitycodeswithintss
+    finalprintreadyvariantsinambiguitycodesandtss `CD.deepseq` printFile 
+                                                               options 
+                                                               "variants_in_ambiguity_codes.tsv" 
+                                                               finalprintreadyvariantsinambiguitycodesandtss 
 
 {-------------------------}
 
