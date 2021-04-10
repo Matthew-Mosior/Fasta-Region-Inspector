@@ -70,7 +70,7 @@ To install the peripheral packages **fri.hs** requires, you can call the followi
 
 `Sample\tSymbol\tChromosome\tStart\tStop\tRef\tAlt`<br/><br/>
 
-This file hold all of variant information.<br/><br/>
+This file hold all of the variant information.<br/><br/>
 
 2. **Region Input** - This input tsv file needs to have the following fields:<br/><br/>
 
@@ -88,8 +88,6 @@ To create this file, you will typically take each variant of interest's correspo
 `Gene name`<br/><br/>
 
 You can then subset this file to contain only fields `Chromosome/scaffold name`, `Transcription start site (TSS)`, `Strand` and `Gene name`.<br/><br/>
-
-**IMPORTANT: Remove the "chr" before the chromosome number.**<br/><br/>
 
 3. **Ambiguity Codes String** - This string argument describes the ambiguity codes to search for within the TSS of each gene.<br/><br/>
 
@@ -121,7 +119,7 @@ Please see [examples](https://github.com/Matthew-Mosior/Fasta-Region-Inspector/t
 
 4. **Fasta File** - The argument is the fasta file used to string search against.<br/><br/>    
 
-**IMPORTANT: Make sure to prefix each chromosome with "chr" before the chromosome number (i.e. chrX, chr2).**<br/><br/>
+**IMPORTANT: Make sure the naming conventions between the chromosome field in the region input matches that contained within the fasta file.**<br/><br/>
 
 ## Usage
 
